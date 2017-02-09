@@ -1,0 +1,181 @@
+//
+//  IntentHandler.swift
+//  SiriIntent
+//
+//  Created by Parth Dubal on 12/21/16.
+//  Copyright © 2016 Parth Dubal. All rights reserved.
+//
+
+import Intents
+
+// As an example, this class is set up to handle Message intents.
+// You will want to replace this or add other intents as appropriate.
+// The intents you wish to handle must be declared in the extension's Info.plist.
+
+// You can test your example integration by saying things to Siri like:
+// "Send a message using <myApp>"
+// "<myApp> John saying hello"
+// "Search for messages in <myApp>"
+
+class IntentHandler: INExtension, INSendMessageIntentHandling, INSearchForMessagesIntentHandling, INSetMessageAttributeIntentHandling {
+    
+    override func handler(for intent: INIntent) -> Any {
+        // This is the default implementation.  If you want different objects to handle different intents,
+        // you can override this and return the handler you want for that particular intent.
+        
+        return self
+    }
+    
+    // MARK: - INSendMessageIntentHandling
+    
+    // Implement resolution methods to provide additional information about your intent (optional).
+    func resolveRecipients(forSendMessage intent: INSendMessageIntent, with completion: @escaping ([INPersonResolutionResult]) -> Void)
+    {
+        self.printBreakLines();
+        print("===resolveRecipients===")
+        print("intent.content: \(intent.content)")
+        print("intent.groupName: \(intent.groupName)")
+        print("intent.sender: \(intent.sender)")
+        print("intent.serviceName: \(intent.serviceName)")
+        
+        print("intent.sender?.contactIdentifier: \(intent.sender?.contactIdentifier)")
+        if let recipients = intent.recipients {
+            
+            // If no recipients were provided we'll need to prompt for a value.
+            if recipients.count == 0 {
+                completion([INPersonResolutionResult.needsValue()])
+                return
+            }
+            
+            var resolutionResults = [INPersonResolutionResult]()
+            for recipient in recipients {
+                let matchingContacts = [recipient] // Implement your contact matching logic here to create an array of matching contacts
+                switch matchingContacts.count {
+                case 2  ... Int.max:
+                    // We need Siri's help to ask user to pick one from the matches.
+                    resolutionResults += [INPersonResolutionResult.disambiguation(with: matchingContacts)]
+                    
+                case 1:
+                    // We have exactly one matching contact
+                    resolutionResults += [INPersonResolutionResult.success(with: recipient)]
+                    
+                case 0:
+                    // We have no contacts matching the description provided
+                    resolutionResults += [INPersonResolutionResult.needsValue()]
+                    
+                default:
+                    break
+                    
+                }
+            }
+            completion(resolutionResults)
+        }
+    }
+    
+    func resolveContent(forSendMessage intent: INSendMessageIntent, with completion: @escaping (INStringResolutionResult) -> Void) {
+        
+        self.printBreakLines();
+        print("===resolveContent===")
+        print("intent.content: \(intent.content)")
+        print("intent.sender?.contactIdentifier: \(intent.sender?.contactIdentifier)")
+        
+        if let text = intent.content, !text.isEmpty {
+            completion(INStringResolutionResult.success(with: text))
+        } else {
+            completion(INStringResolutionResult.needsValue())
+        }
+    }
+    
+    // Once resolution is completed, perform validation on the intent and provide confirmation (optional).
+    
+    func confirm(sendMessage intent: INSendMessageIntent, completion: @escaping (INSendMessageIntentResponse) -> Void) {
+        // Verify user is authenticated and your app is ready to send a message.
+        self.printBreakLines();
+        print("confirmsendMessage intent is being handled.")
+        print("intent.content: \(intent.content)");
+        print("intent.groupName: \(intent.groupName)");
+        print("intent.recipients: \(intent.recipients)");
+        print("intent.sender: \(intent.sender)");
+        print("intent.serviceName: \(intent.serviceName)");
+        
+        let userActivity = NSUserActivity(activityType: NSStringFromClass(INSendMessageIntent.self))
+        let response = INSendMessageIntentResponse(code: .ready, userActivity: userActivity)
+        completion(response)
+    }
+    
+    // Handle the completed intent (required).
+    
+    func handle(sendMessage intent: INSendMessageIntent, completion: @escaping (INSendMessageIntentResponse) -> Void) {
+        // Implement your application logic to send a message here.
+        self.printBreakLines();
+        
+        
+        let userActivity = NSUserActivity(activityType: NSStringFromClass(INSendMessageIntent.self))
+        print("handlesendMessage intent is being handled.")
+        print("intent.content: \(intent.content)");
+        print("intent.groupName: \(intent.groupName)");
+        print("intent.recipients: \(intent.recipients)");
+        print("intent.sender: \(intent.sender)");
+        print("intent.serviceName: \(intent.serviceName)");
+       
+        if let userDefault = UserDefaults(suiteName: "group.appgroupintegration")
+        {
+            var counter = userDefault.integer(forKey: "counter");
+            counter+=1;
+            userDefault.set(counter, forKey: "counter");
+        }
+        
+        let response = INSendMessageIntentResponse(code: .success, userActivity: userActivity)
+        completion(response)
+    }
+    
+    // Implement handlers for each intent you wish to handle.  As an example for messages, you may wish to also handle searchForMessages and setMessageAttributes.
+    
+    // MARK: - INSearchForMessagesIntentHandling
+    
+    func handle(searchForMessages intent: INSearchForMessagesIntent, completion: @escaping (INSearchForMessagesIntentResponse) -> Void) {
+        // Implement your application logic to find a message that matches the information in the intent.
+        self.printBreakLines();
+        print("handle searchForMessages intent is being handled.")
+        print("intent.attributes: \(intent.attributes)");
+        print("intent.groupName: \(intent.groupNames)");
+        print("intent.recipients: \(intent.recipients)");
+        print("intent.identifiers: \(intent.identifiers)");
+        print("intent.notificationIdentifiers: \(intent.notificationIdentifiers)");
+        
+        let userActivity = NSUserActivity(activityType: NSStringFromClass(INSearchForMessagesIntent.self))
+        let response = INSearchForMessagesIntentResponse(code: .success, userActivity: userActivity)
+        // Initialize with found message's attributes
+        response.messages = [INMessage(
+            identifier: "identifier",
+            content: "I am so excited about SiriKit!",
+            dateSent: Date(),
+            sender: INPerson(personHandle: INPersonHandle(value: "sarah@example.com", type: .emailAddress), nameComponents: nil, displayName: "Sarah", image: nil,  contactIdentifier: nil, customIdentifier: nil),
+            recipients: [INPerson(personHandle: INPersonHandle(value: "+1-415-555-5555", type: .phoneNumber), nameComponents: nil, displayName: "John", image: nil,  contactIdentifier: nil, customIdentifier: nil)]
+            )]
+        completion(response)
+    }
+    
+    // MARK: - INSetMessageAttributeIntentHandling
+    
+    func handle(setMessageAttribute intent: INSetMessageAttributeIntent, completion: @escaping (INSetMessageAttributeIntentResponse) -> Void) {
+        
+        self.printBreakLines();
+        print("handle setMessageAttribute intent is being handled.")
+        print("intent.attribute: \(intent.attribute)");
+        print("intent.description: \(intent.description)");
+        print("intent.identifiers: \(intent.identifiers)");
+        
+        // Implement your application logic to set the message attribute here.
+        
+        let userActivity = NSUserActivity(activityType: NSStringFromClass(INSetMessageAttributeIntent.self))
+        let response = INSetMessageAttributeIntentResponse(code: .success, userActivity: userActivity)
+        completion(response)
+    }
+    
+    func printBreakLines()
+    {
+        print("**********");
+    }
+}
+
